@@ -46,12 +46,13 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+                stage('Deploy') {
             steps {
                 echo 'Deploying to staging environment...'
                 sh 'docker rm -f $STAGING_CONTAINER || true'
                 sh 'docker run -d --name $STAGING_CONTAINER -p 3001:3000 $DOCKER_IMAGE'
-                sh 'curl http://localhost:3001/health'
+                sh 'sleep 5'
+                sh 'curl http://host.docker.internal:3001/health'
             }
         }
 
@@ -60,14 +61,33 @@ pipeline {
                 echo 'Promoting to production environment...'
                 sh 'docker rm -f $PRODUCTION_CONTAINER || true'
                 sh 'docker run -d --name $PRODUCTION_CONTAINER -p 3002:3000 $DOCKER_IMAGE'
-                sh 'curl http://localhost:3002/health'
+                sh 'sleep 5'
+                sh 'curl http://host.docker.internal:3002/health'
             }
         }
 
         stage('Monitoring') {
             steps {
                 echo 'Monitoring production application health and logs...'
-                sh 'curl http://localhost:3002/health'
+                sh 'curl http://host.docker.internal:3002/health'
+                sh 'docker logs $PRODUCTION_CONTAINER'
+            }
+        }
+
+        stage('Release') {
+            steps {
+                echo 'Promoting to production environment...'
+                sh 'docker rm -f $PRODUCTION_CONTAINER || true'
+                sh 'docker run -d --name $PRODUCTION_CONTAINER -p 3002:3000 $DOCKER_IMAGE'
+                sh 'sleep 5'
+                sh 'curl http://host.docker.internal:3002/health'
+            }
+        }
+
+        stage('Monitoring') {
+            steps {
+                echo 'Monitoring production application health and logs...'
+                sh 'curl http://host.docker.internal:3002/health'
                 sh 'docker logs $PRODUCTION_CONTAINER'
             }
         }
